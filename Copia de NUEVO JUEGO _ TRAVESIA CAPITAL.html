@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Travesía Capital: Misión Personería</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&family=Fredoka+One&display=swap');
+
+        :root {
+            --primary: #0033A0; /* Azul institucional */
+            --accent: #E30613;  /* Rojo institucional */
+            --yellow: #FFD700;
+            --success: #009640;
+            --text: #333;
+            --bg: #f4f4f4;
+            --sky: #87CEEB;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #222;
+            font-family: 'Montserrat', sans-serif;
+            overflow: hidden;
+            touch-action: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            aspect-ratio: 16/9;
+            min-height: 300px;
+            background: var(--sky);
+            border-radius: 12px;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            overflow: hidden;
+            border: 4px solid #333;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* UI Overlays */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            z-index: 20;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* Start Screen Specifics */
+        #start-screen {
+            background: rgba(0, 0, 0, 0.6); /* Dim background to see game behind */
+            backdrop-filter: blur(3px);
+        }
+
+        .game-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f0f8ff 100%);
+            padding: 30px;
+            border-radius: 20px;
+            border: 5px solid var(--primary);
+            box-shadow: 0 10px 0 rgba(0,0,0,0.2), 0 20px 40px rgba(0,0,0,0.3);
+            max-width: 500px;
+            width: 90%;
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            from { transform: scale(0.5); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .hidden { display: none !important; }
+
+        h1 { 
+            font-family: 'Fredoka One', cursive; /* Fun font */
+            color: var(--primary); 
+            font-size: 2.5rem; 
+            margin: 0; 
+            text-transform: uppercase; 
+            text-shadow: 3px 3px 0px #FFD700, 5px 5px 0px rgba(0,0,0,0.1);
+            letter-spacing: 1px;
+            line-height: 1;
+        }
+        
+        h2 { 
+            color: var(--accent); 
+            font-size: 1.2rem; 
+            margin-top: 5px; 
+            margin-bottom: 15px; 
+            background: #ffe6e6;
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 15px;
+            transform: rotate(-2deg);
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.1);
+        }
+
+        p { color: var(--text); font-size: 0.95rem; line-height: 1.4; margin-bottom: 20px; font-weight: 600; }
+        
+        .btn {
+            background: linear-gradient(to bottom, #FFD700, #FFA500);
+            color: #333;
+            border: 3px solid #fff;
+            padding: 15px 40px;
+            font-size: 1.5rem;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 900;
+            font-family: 'Fredoka One', cursive;
+            box-shadow: 0 6px 0 #cc8400, 0 10px 10px rgba(0,0,0,0.2);
+            position: relative;
+            z-index: 30;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.1s;
+            animation: pulseBtn 2s infinite;
+        }
+
+        .btn:hover { transform: translateY(2px); box-shadow: 0 4px 0 #cc8400, 0 5px 5px rgba(0,0,0,0.2); }
+        .btn:active { transform: translateY(6px); box-shadow: 0 0 0 #cc8400; }
+
+        @keyframes pulseBtn {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        /* Character Selection */
+        .char-label { font-weight: 900; color: var(--primary); margin-bottom: 10px; display: block; }
+        .char-select { display: flex; gap: 15px; margin-bottom: 25px; justify-content: center; }
+        .char-option {
+            cursor: pointer;
+            border: 4px solid #eee;
+            border-radius: 15px;
+            padding: 10px;
+            transition: all 0.2s;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 80px;
+            position: relative;
+        }
+        .char-option:hover { transform: translateY(-5px); border-color: var(--yellow); }
+        .char-option.selected { 
+            border-color: var(--primary); 
+            background: #e6f0ff; 
+            transform: scale(1.1); 
+            box-shadow: 0 10px 20px rgba(0,51,160,0.2);
+        }
+        .char-option.selected::after {
+            content: '✔';
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: var(--success);
+            color: white;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            border: 2px solid white;
+        }
+        .char-icon { width: 60px; height: 60px; margin-bottom: 5px; filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.1)); }
+
+        /* HUD */
+        #hud {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+            font-weight: 900;
+            color: white;
+            font-size: 1rem;
+            z-index: 5;
+            text-shadow: 2px 2px 0px black;
+        }
+        .hud-panel { 
+            background: rgba(0, 51, 160, 0.9); 
+            padding: 8px 15px; 
+            border-radius: 50px; 
+            border: 3px solid white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+        }
+
+        /* Quiz Modal */
+        #quiz-modal {
+            background: rgba(0, 51, 160, 0.95);
+            backdrop-filter: blur(5px);
+        }
+        .quiz-card {
+            background: white;
+            padding: 25px;
+            border-radius: 20px;
+            border: 5px solid var(--yellow);
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+        }
+        #quiz-question { 
+            font-size: 1.3rem; 
+            margin-bottom: 20px; 
+            color: var(--primary); 
+            font-weight: 800; 
+            font-family: 'Fredoka One', cursive;
+        }
+        .quiz-option {
+            background: #f8f8f8;
+            color: #333;
+            width: 100%;
+            padding: 15px;
+            margin: 8px 0;
+            text-align: left;
+            border: 2px solid #ddd;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: 'Montserrat', sans-serif;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+        .quiz-option:hover { background: #e6f0ff; border-color: var(--primary); transform: translateX(5px); }
+        .quiz-option:active { transform: scale(0.98); }
+
+        /* Mobile Controls */
+        #mobile-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            pointer-events: none;
+            z-index: 8;
+        }
+        .touch-zone {
+            position: absolute;
+            bottom: 0;
+            width: 50%;
+            height: 100%;
+            pointer-events: auto;
+        }
+        #zone-jump { right: 0; }
+        .control-hint {
+            position: absolute;
+            bottom: 30px;
+            width: 100%;
+            text-align: center;
+            font-size: 1.2rem;
+            color: white;
+            font-family: 'Fredoka One', cursive;
+            text-shadow: 2px 2px 0px black;
+            pointer-events: none;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse { 0% { opacity: 0.6; transform: scale(1); } 50% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0.6; transform: scale(1); } }
+
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="hud" class="hidden">
+        <div class="hud-panel">
+            <span>📍</span> <span id="level-display">La Candelaria</span>
+        </div>
+        <div class="hud-panel">
+            <span>💡</span> <span id="score-display">0</span>
+        </div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="start-screen" class="overlay">
+        <div class="game-card">
+            <h1>Travesía Capital</h1>
+            <h2>🚀 Misión Personería</h2>
+            <p>¡Bogotá te necesita! Corre por las localidades, esquiva los trancones 🚌 y recolecta ideas 💡.</p>
+            
+            <span class="char-label">ELIGE TU HÉROE:</span>
+            <div class="char-select">
+                <div class="char-option" onclick="selectChar(0)" id="char0">
+                    <svg class="char-icon" viewBox="0 0 100 100">
+                        <circle cx="50" cy="30" r="20" fill="#333"/>
+                        <rect x="20" y="50" width="60" height="50" rx="10" fill="#0033A0"/>
+                        <rect x="40" y="55" width="20" height="40" fill="#E30613"/> <!-- Corbata -->
+                    </svg>
+                    <div>Él</div>
+                </div>
+                <div class="char-option" onclick="selectChar(1)" id="char1">
+                    <svg class="char-icon" viewBox="0 0 100 100">
+                        <circle cx="50" cy="30" r="20" fill="#333"/>
+                        <path d="M20,50 Q50,90 80,50 L80,100 L20,100 Z" fill="#E30613"/>
+                        <rect x="25" y="50" width="50" height="10" fill="#0033A0"/> <!-- Detalle -->
+                    </svg>
+                    <div>Ella</div>
+                </div>
+            </div>
+
+            <button class="btn" onclick="startGame()">¡JUGAR!</button>
+        </div>
+    </div>
+
+    <!-- Quiz Overlay -->
+    <div id="quiz-modal" class="overlay hidden">
+        <div class="quiz-card">
+            <h2>🧠 Reto de Saber</h2>
+            <p id="quiz-question">Pregunta aquí</p>
+            <div id="quiz-options"></div>
+        </div>
+    </div>
+
+    <!-- Game Over / Win -->
+    <div id="end-screen" class="overlay hidden">
+        <div class="game-card">
+            <h1 id="end-title">Fin del Juego</h1>
+            <p id="end-msg">Mensaje final.</p>
+            <div style="font-size: 1.5rem; margin: 20px 0; font-weight: 900; color: var(--primary);">
+                Saberes: <span id="final-score">0</span> 💡
+            </div>
+            <button class="btn" onclick="resetGame()">🔁 REINTENTAR</button>
+        </div>
+    </div>
+
+    <!-- Mobile Controls -->
+    <div id="mobile-controls">
+        <div id="zone-action" class="touch-zone"></div>
+        <div id="zone-jump" class="touch-zone"></div>
+        <div class="control-hint">👆 TOCA PARA SALTAR</div>
+    </div>
+</div>
+
+<script>
+    // --- Configuración y Estado ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    let scale = 1;
+
+    // Localidades de Bogotá para los niveles
+    const localidades = ["La Candelaria", "Chapinero", "Kennedy", "Suba", "Sumapaz"];
+
+    function resize() {
+        const container = document.getElementById('game-container');
+        if (container && container.clientWidth > 0 && container.clientHeight > 0) {
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            scale = canvas.height / 600; // Base height reference
+        }
+    }
+
+    const GAME_STATES = { MENU: 0, PLAYING: 1, QUIZ: 2, END: 3 };
+    let currentState = GAME_STATES.MENU;
+    let selectedCharIndex = 0;
+    let score = 0;
+    let level = 1;
+    let speed = 6;
+    let animationId;
+    let gameSpeedMultiplier = 1;
+    let bgOffset = 0; // Para el efecto parallax
+
+    // --- Entidades ---
+    
+    class Player {
+        constructor() {
+            this.width = 50;
+            this.height = 80;
+            this.x = 80;
+            this.y = 0;
+            this.vy = 0;
+            this.gravity = 0.9;
+            this.jumpPower = -17;
+            this.grounded = false;
+            this.baseY = 0;
+            this.runCycle = 0;
+        }
+
+        update() {
+            this.baseY = canvas.height - 100 * scale;
+            this.vy += this.gravity * scale;
+            this.y += this.vy;
+
+            if (this.y > this.baseY - this.height * scale) {
+                this.y = this.baseY - this.height * scale;
+                this.vy = 0;
+                this.grounded = true;
+            } else {
+                this.grounded = false;
+            }
+            
+            if(this.grounded) this.runCycle += 0.2;
+        }
+
+        jump() {
+            if (this.grounded) {
+                this.vy = this.jumpPower * scale;
+                this.grounded = false;
+            }
+        }
+
+        draw() {
+            const x = this.x * scale;
+            const y = this.y;
+            const w = this.width * scale;
+            const h = this.height * scale;
+
+            ctx.save();
+            
+            // Animación simple de "correr" (rebote)
+            const bounce = this.grounded ? Math.sin(this.runCycle) * 5 * scale : 0;
+
+            // Cabeza
+            ctx.fillStyle = "#FFCCAA";
+            ctx.beginPath();
+            ctx.arc(x + w/2, y + h*0.3 + bounce, w*0.35, 0, Math.PI*2);
+            ctx.fill();
+
+            // Cuerpo
+            if (selectedCharIndex === 0) ctx.fillStyle = "#0033A0"; // Azul
+            else ctx.fillStyle = "#E30613"; // Rojo
+
+            // Torso
+            ctx.fillRect(x + w*0.1, y + h*0.5 + bounce, w*0.8, h*0.4);
+
+            // Piernas (Simulación visual)
+            ctx.fillStyle = "#333";
+            if(this.grounded && Math.sin(this.runCycle) > 0) {
+                 ctx.fillRect(x + w*0.2, y + h*0.9 + bounce, w*0.2, h*0.1); // Pierna 1
+            } else {
+                 ctx.fillRect(x + w*0.6, y + h*0.9 + bounce, w*0.2, h*0.1); // Pierna 2
+            }
+
+            // Ojos
+            ctx.fillStyle = "#333";
+            ctx.beginPath();
+            ctx.arc(x + w/2 + 8*scale, y + h*0.3 + bounce, 3*scale, 0, Math.PI*2);
+            ctx.fill();
+            
+            // Maletín (Detalle de funcionario)
+            ctx.fillStyle = "#654321";
+            ctx.fillRect(x + w*0.6, y + h*0.6 + bounce, w*0.4, h*0.25);
+            ctx.strokeStyle = "#432";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x + w*0.6, y + h*0.6 + bounce, w*0.4, h*0.25);
+
+            ctx.restore();
+        }
+    }
+
+    class Obstacle {
+        constructor() {
+            this.width = 60;
+            this.height = 50;
+            this.x = canvas.width;
+            this.y = canvas.height - 100 * scale - this.height * scale;
+            this.type = Math.random() < 0.5 ? 'bus' : 'obra'; 
+            
+            // Si es bus, es más grande
+            if (this.type === 'bus') {
+                this.width = 100;
+                this.height = 60;
+                this.y = canvas.height - 100 * scale - this.height * scale;
+            }
+            
+            this.markedForDeletion = false;
+        }
+
+        update() {
+            this.x -= speed * scale * gameSpeedMultiplier;
+            if (this.x < -this.width * scale) this.markedForDeletion = true;
+        }
+
+        draw() {
+            const x = this.x;
+            const y = this.y;
+            const w = this.width * scale;
+            const h = this.height * scale;
+
+            ctx.save();
+            if (this.type === 'bus') {
+                // Bus Rojo (Transmilenio)
+                ctx.fillStyle = "#C8102E"; // Rojo TM
+                ctx.fillRect(x, y, w, h);
+                
+                // Ventanas
+                ctx.fillStyle = "#87CEEB";
+                ctx.fillRect(x + 5*scale, y + 10*scale, w*0.25, h*0.4);
+                ctx.fillRect(x + w*0.35, y + 10*scale, w*0.25, h*0.4);
+                ctx.fillRect(x + w*0.7, y + 10*scale, w*0.25, h*0.4);
+                
+                // Ruedas
+                ctx.fillStyle = "#333";
+                ctx.beginPath();
+                ctx.arc(x + w*0.2, y + h, 10*scale, 0, Math.PI*2);
+                ctx.arc(x + w*0.8, y + h, 10*scale, 0, Math.PI*2);
+                ctx.fill();
+                
+                // Fuelle (Articulación)
+                ctx.fillStyle = "#555";
+                ctx.fillRect(x + w*0.6, y, w*0.1, h);
+
+            } else {
+                // Obra (Barrera)
+                ctx.fillStyle = "#FF8000"; // Naranja
+                ctx.fillRect(x, y + h*0.2, w, h*0.8);
+                
+                // Rayas blancas
+                ctx.fillStyle = "white";
+                ctx.beginPath();
+                ctx.moveTo(x + 10*scale, y + h*0.2);
+                ctx.lineTo(x, y + h*0.4);
+                ctx.lineTo(x, y + h*0.6);
+                ctx.lineTo(x + 20*scale, y + h*0.2);
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.moveTo(x + w - 10*scale, y + h);
+                ctx.lineTo(x + w, y + h*0.8);
+                ctx.lineTo(x + w, y + h*0.6);
+                ctx.lineTo(x + w - 20*scale, y + h);
+                ctx.fill();
+                
+                // Texto "OBRA"
+                ctx.fillStyle = "black";
+                ctx.font = `bold ${10*scale}px Arial`;
+                ctx.fillText("OBRA", x + w*0.2, y + h*0.6);
+            }
+            ctx.restore();
+        }
+    }
+
+    class Collectible {
+        constructor() {
+            this.size = 35;
+            this.x = canvas.width;
+            this.y = canvas.height - 220 * scale - Math.random() * 80 * scale;
+            this.markedForDeletion = false;
+            this.oscillation = Math.random() * Math.PI * 2;
+        }
+
+        update() {
+            this.x -= speed * scale * gameSpeedMultiplier;
+            this.oscillation += 0.15;
+            this.y += Math.sin(this.oscillation) * 1 * scale;
+            if (this.x < -this.size * scale) this.markedForDeletion = true;
+        }
+
+        draw() {
+            const s = this.size * scale;
+            ctx.save();
+            ctx.translate(this.x + s/2, this.y + s/2);
+            
+            // Bombillo (Idea/Saber)
+            ctx.fillStyle = "#FFDD00";
+            ctx.beginPath();
+            ctx.arc(0, -s*0.1, s*0.35, 0, Math.PI*2);
+            ctx.fill();
+            
+            // Base del bombillo
+            ctx.fillStyle = "#555";
+            ctx.fillRect(-s*0.15, s*0.15, s*0.3, s*0.25);
+            
+            // Rayos de luz
+            ctx.strokeStyle = "rgba(255, 220, 0, 0.7)";
+            ctx.lineWidth = 3;
+            for(let i=0; i<8; i++) {
+                ctx.rotate(Math.PI/4);
+                ctx.beginPath();
+                ctx.moveTo(0, s*0.5);
+                ctx.lineTo(0, s*0.7);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+    }
+
+    class Particle {
+        constructor(x, y, color) {
+            this.x = x;
+            this.y = y;
+            this.size = Math.random() * 5 + 2;
+            this.speedX = Math.random() * 6 - 3;
+            this.speedY = Math.random() * 6 - 3;
+            this.color = color;
+            this.life = 60;
+        }
+        update() {
+            this.x += this.speedX;
+            this.y += this.speedY;
+            this.life -= 2;
+        }
+        draw() {
+            ctx.save();
+            ctx.globalAlpha = this.life / 60;
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI*2);
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+
+    // --- Datos del Quiz (Ciclo GC+I ajustado) ---
+    const quizData = [
+        {
+            q: "¡Estás en La Candelaria! Para iniciar el ciclo de innovación, ¿qué debemos hacer primero?",
+            options: ["Esperar órdenes", "Identificar y Crear conocimiento", "Archivar papeles"],
+            correct: 1,
+            feedback: "¡Exacto! Todo empieza identificando lo que sabemos."
+        },
+        {
+            q: "Llegamos a Chapinero. Hay mucho movimiento. ¿Cómo aseguramos que la información no se pierda?",
+            options: ["Documentando y preservando", "Memorizando todo", "No diciéndole a nadie"],
+            correct: 0,
+            feedback: "¡Bien! La documentación protege nuestra memoria institucional."
+        },
+        {
+            q: "Estamos en Kennedy, una localidad gigante. Para que el saber llegue a todos, ¿qué fase sigue?",
+            options: ["Guardarlo bajo llave", "Transferencia e Intercambio", "Venderlo"],
+            correct: 1,
+            feedback: "¡Correcto! El conocimiento crece cuando se comparte."
+        },
+        {
+            q: "Llegando a Suba. Ya tenemos el saber, ¿ahora qué hacemos?",
+            options: ["Aplicarlo para generar Valor Público", "Hacer una fiesta", "Olvidarlo"],
+            correct: 0,
+            feedback: "¡Excelente! El fin último es servir mejor a la ciudadanía."
+        },
+        {
+            q: "¡Misión final en Sumapaz! La innovación pública debe ser...",
+            options: ["Costosa y lenta", "Inclusiva y garante de derechos", "Solo para expertos"],
+            correct: 1,
+            feedback: "¡Así es! Innovamos para garantizar derechos humanos."
+        }
+    ];
+
+    let player;
+    let obstacles = [];
+    let collectibles = [];
+    let particles = [];
+    let nextObstacleTimer = 0;
+    let nextCollectibleTimer = 0;
+    let scoreForNextLevel = 5;
+
+    // --- Funciones de Dibujo de Fondo (Cerros y Monserrate) ---
+    function drawBackground() {
+        // Cielo
+        ctx.fillStyle = "#87CEEB";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Sol
+        ctx.fillStyle = "#FFD700";
+        ctx.beginPath();
+        ctx.arc(canvas.width - 60*scale, 60*scale, 40*scale, 0, Math.PI*2);
+        ctx.fill();
+
+        // Parallax simple para las montañas
+        const mountainY = canvas.height - 100 * scale;
+        
+        ctx.save();
+        // Cerros Orientales (Verde oscuro, atrás)
+        ctx.fillStyle = "#2E8B57"; 
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height);
+        
+        // Generar silueta de montaña basada en seno
+        for(let x=0; x <= canvas.width; x+=10) {
+            // Movemos la fase con bgOffset pero más lento
+            const h = 150 * scale + Math.sin((x + bgOffset * 0.2) * 0.005) * 50 * scale + Math.cos((x + bgOffset * 0.2) * 0.02) * 20 * scale;
+            ctx.lineTo(x, mountainY - h);
+        }
+        ctx.lineTo(canvas.width, canvas.height);
+        ctx.lineTo(0, canvas.height);
+        ctx.fill();
+
+        // Monserrate (Dibujamos una iglesia blanca sobre la montaña más alta visible o fija)
+        // Para simplificar en movimiento, la dibujamos estática en el fondo lejano
+        const monserrateX = canvas.width * 0.7;
+        const monserrateBaseY = mountainY - 200 * scale;
+        
+        // Iglesia
+        ctx.fillStyle = "white";
+        ctx.fillRect(monserrateX, monserrateBaseY, 20*scale, 30*scale); // Nave
+        ctx.beginPath();
+        ctx.moveTo(monserrateX - 5*scale, monserrateBaseY + 10*scale);
+        ctx.lineTo(monserrateX + 25*scale, monserrateBaseY + 10*scale); // Techo base
+        ctx.lineTo(monserrateX + 10*scale, monserrateBaseY - 10*scale); // Punta
+        ctx.fill();
+        ctx.fillStyle = "white"; // Cruz? muy chica
+        
+        ctx.restore();
+
+        // Nubes (Decorativas)
+        ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+        const cloudX = (canvas.width - (bgOffset * 0.5) % (canvas.width + 200));
+        ctx.beginPath();
+        ctx.arc(cloudX, 80*scale, 30*scale, 0, Math.PI*2);
+        ctx.arc(cloudX + 40*scale, 80*scale, 40*scale, 0, Math.PI*2);
+        ctx.arc(cloudX + 80*scale, 80*scale, 30*scale, 0, Math.PI*2);
+        ctx.fill();
+    }
+
+    // --- Funciones Principales ---
+
+    function init() {
+        player = new Player();
+        obstacles = [];
+        collectibles = [];
+        particles = [];
+        score = 0;
+        level = 1;
+        gameSpeedMultiplier = 1;
+        speed = 6;
+        scoreForNextLevel = 5;
+        bgOffset = 0;
+
+        document.getElementById('score-display').innerText = "0";
+        document.getElementById('level-display').innerText = localidades[0];
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('end-screen').classList.add('hidden');
+        document.getElementById('hud').classList.remove('hidden');
+        
+        if('ontouchstart' in window || navigator.maxTouchPoints) {
+            document.getElementById('mobile-controls').style.display = 'block';
+        }
+
+        currentState = GAME_STATES.PLAYING;
+        if (animationId) cancelAnimationFrame(animationId);
+        animate();
+    }
+
+    function selectChar(index) {
+        selectedCharIndex = index;
+        document.querySelectorAll('.char-option').forEach(el => el.classList.remove('selected'));
+        const charEl = document.getElementById('char'+index);
+        if(charEl) charEl.classList.add('selected');
+    }
+    
+    window.startGame = function() {
+        init();
+    }
+
+    window.resetGame = function() {
+        document.getElementById('start-screen').classList.remove('hidden');
+        document.getElementById('end-screen').classList.add('hidden');
+        document.getElementById('hud').classList.add('hidden');
+        currentState = GAME_STATES.MENU;
+        // Iniciar un loop de animación de fondo en el menú para que no esté estático
+        if (animationId) cancelAnimationFrame(animationId);
+        animateMenu();
+    }
+    
+    function animateMenu() {
+        if (currentState !== GAME_STATES.MENU && currentState !== GAME_STATES.END) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        bgOffset += 1; // Movimiento lento
+        drawBackground();
+        
+        // Dibujar suelo estático
+        ctx.fillStyle = "#555";
+        ctx.fillRect(0, canvas.height - 100*scale, canvas.width, 100*scale);
+        ctx.fillStyle = "#F7C600";
+        ctx.fillRect(0, canvas.height - 90*scale, canvas.width, 5*scale);
+        
+        animationId = requestAnimationFrame(animateMenu);
+    }
+
+    function triggerQuiz() {
+        currentState = GAME_STATES.QUIZ;
+        const modal = document.getElementById('quiz-modal');
+        const qData = quizData[Math.min(level - 1, quizData.length - 1)];
+        
+        document.getElementById('quiz-question').innerText = qData.q;
+        const optionsDiv = document.getElementById('quiz-options');
+        optionsDiv.innerHTML = '';
+
+        qData.options.forEach((opt, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'quiz-option';
+            btn.innerText = opt;
+            btn.onclick = () => checkAnswer(index, qData.correct, qData.feedback);
+            optionsDiv.appendChild(btn);
+        });
+
+        modal.classList.remove('hidden');
+    }
+
+    function checkAnswer(selected, correct, feedback) {
+        const modal = document.getElementById('quiz-modal');
+        if (selected === correct) {
+            level++;
+            speed += 0.5; // Un poco más rápido
+            scoreForNextLevel += 5;
+            
+            // Efecto de celebración
+            spawnParticles(canvas.width/2, canvas.height/2, "#009640");
+
+            if (level > localidades.length) {
+                gameOver(true);
+            } else {
+                modal.classList.add('hidden');
+                currentState = GAME_STATES.PLAYING;
+                document.getElementById('level-display').innerText = localidades[level-1];
+                animate();
+            }
+        } else {
+            alert("⚠️ " + feedback);
+            modal.classList.add('hidden');
+            currentState = GAME_STATES.PLAYING;
+            score = Math.max(0, score - 2); // Penalización leve
+            document.getElementById('score-display').innerText = score;
+            animate();
+        }
+    }
+
+    function gameOver(win) {
+        currentState = GAME_STATES.END;
+        const screen = document.getElementById('end-screen');
+        const title = document.getElementById('end-title');
+        const msg = document.getElementById('end-msg');
+        
+        screen.classList.remove('hidden');
+        document.getElementById('final-score').innerText = score;
+
+        if (win) {
+            title.innerText = "¡Misión Cumplida! 🎉";
+            title.style.color = "var(--success)";
+            msg.innerText = "¡Felicidades! Has recorrido Bogotá completando el ciclo de innovación. La Personería está orgullosa.";
+        } else {
+            title.innerText = "¡Oh no! El Trancón 🚌";
+            title.style.color = "var(--accent)";
+            msg.innerText = "El caos de la ciudad te detuvo. ¡Inténtalo de nuevo!";
+        }
+        
+        // Reanudar animación de fondo lenta
+        animateMenu();
+    }
+
+    function spawnParticles(x, y, color) {
+        for(let i=0; i<15; i++){
+            particles.push(new Particle(x, y, color));
+        }
+    }
+
+    function animate() {
+        if (currentState !== GAME_STATES.PLAYING) return;
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Actualizar fondo parallax
+        bgOffset += speed * 0.5;
+        drawBackground();
+
+        // Suelo (Asfalto gris con líneas)
+        ctx.fillStyle = "#555";
+        ctx.fillRect(0, canvas.height - 100*scale, canvas.width, 100*scale);
+        // Línea amarilla
+        ctx.fillStyle = "#F7C600";
+        ctx.fillRect(0, canvas.height - 90*scale, canvas.width, 5*scale);
+
+        // Jugador
+        player.update();
+        player.draw();
+
+        // Obstáculos (Trancón y Obras)
+        nextObstacleTimer++;
+        // Hacer el spawn un poco más aleatorio para diversión
+        let spawnRate = 120 - (speed * 3);
+        if(spawnRate < 60) spawnRate = 60;
+
+        if (nextObstacleTimer > spawnRate + Math.random()*50) {
+            obstacles.push(new Obstacle());
+            nextObstacleTimer = 0;
+        }
+
+        obstacles.forEach((obs, index) => {
+            obs.update();
+            obs.draw();
+            
+            // Colisión (Hitbox un poco más permisiva)
+            const pLeft = player.x * scale + 10;
+            const pRight = player.x * scale + player.width * scale - 10;
+            const pTop = player.y + 10;
+            const pBottom = player.y + player.height * scale - 5;
+
+            const oLeft = obs.x + 5;
+            const oRight = obs.x + obs.width * scale - 5;
+            const oTop = obs.y + 5;
+            const oBottom = obs.y + obs.height * scale;
+
+            if (pLeft < oRight && pRight > oLeft && pTop < oBottom && pBottom > oTop) {
+                spawnParticles(player.x * scale, player.y + player.height/2, "#C8102E");
+                gameOver(false);
+            }
+
+            if (obs.markedForDeletion) obstacles.splice(index, 1);
+        });
+
+        // Coleccionables (Ideas)
+        nextCollectibleTimer++;
+        if (nextCollectibleTimer > 80) { // Más frecuentes = más divertido
+            collectibles.push(new Collectible());
+            nextCollectibleTimer = 0;
+        }
+
+        collectibles.forEach((col, index) => {
+            col.update();
+            col.draw();
+
+            const dx = (player.x * scale + player.width * scale / 2) - (col.x + col.size * scale / 2);
+            const dy = (player.y + player.height * scale / 2) - (col.y + col.size * scale / 2);
+            const distance = Math.sqrt(dx*dx + dy*dy);
+
+            if (distance < (player.width * scale / 2 + col.size * scale / 2)) {
+                score++;
+                document.getElementById('score-display').innerText = score;
+                spawnParticles(col.x, col.y, "#FFD700");
+                collectibles.splice(index, 1);
+                
+                if (score >= scoreForNextLevel) {
+                    triggerQuiz();
+                }
+            }
+
+            if (col.markedForDeletion) collectibles.splice(index, 1);
+        });
+
+        // Partículas
+        particles.forEach((p, index) => {
+            p.update();
+            p.draw();
+            if (p.life <= 0) particles.splice(index, 1);
+        });
+
+        animationId = requestAnimationFrame(animate);
+    }
+
+    // --- Input Handling ---
+    window.addEventListener('keydown', e => {
+        if (currentState === GAME_STATES.PLAYING) {
+            if (e.code === 'Space' || e.code === 'ArrowUp') {
+                player.jump();
+            }
+        }
+    });
+
+    const gameContainer = document.getElementById('game-container');
+    gameContainer.addEventListener('touchstart', (e) => {
+        if (currentState === GAME_STATES.PLAYING) {
+            player.jump();
+        }
+    }, {passive: false});
+    
+    // Inicialización segura
+    window.addEventListener('load', () => {
+        resize();
+        window.addEventListener('resize', resize);
+        selectChar(0);
+        // Iniciar animación del menú
+        animateMenu();
+    });
+
+</script>
+</body>
+</html>
